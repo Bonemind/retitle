@@ -1,5 +1,7 @@
 on:
   push:
+    branches:
+      - "*"
     tags:
       - "*"
 
@@ -11,29 +13,43 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: x86_64-pc-windows-gnu
-            archive: zip
-          - target: x86_64-unknown-linux-musl
-            archive: tar.gz tar.xz tar.zst
-          - target: x86_64-apple-darwin
-            archive: zip
+          platform:
+            - os-name: FreeBSD-x86_64
+              runs-on: ubuntu-24.04
+              target: x86_64-unknown-freebsd
+
+            - os-name: Linux-x86_64
+              runs-on: ubuntu-24.04
+              target: x86_64-unknown-linux-musl
+
+            - os-name: Linux-aarch64
+              runs-on: ubuntu-24.04
+              target: aarch64-unknown-linux-musl
+
+            - os-name: Linux-riscv64
+              runs-on: ubuntu-24.04
+              target: riscv64gc-unknown-linux-gnu
+
+            - os-name: Windows-x86_64
+              runs-on: windows-latest
+              target: x86_64-pc-windows-msvc
+
+            - os-name: macOS-x86_64
+              runs-on: macOS-latest
+              target: x86_64-apple-darwin
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
-      - name: Compile and release
-        id: compile
-        uses: rust-build/rust-build.action@v1.4.5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v1
         with:
-          TOOLCHAIN_VERSION: stable
-          RUSTTARGET: ${{ matrix.target }}
-          EXTRA_FILES: "README.md LICENSE"
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          command: build
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
+      - name: Publish artifacts and release
+        uses: houseabsolute/actions-rust-release@v0
         with:
-          name: Binary
-          path: |
-            ${{ steps.compile.outputs.BUILT_ARCHIVE }}
-            ${{ steps.compile.outputs.BUILT_CHECKSUM }}
+          executable-name: ubi
+          target: ${{ matrix.platform.target }}
