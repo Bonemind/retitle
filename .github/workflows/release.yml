@@ -49,3 +49,4 @@ jobs:
         with:
           executable-name: retitle
           target: ${{ matrix.platform.target }}
+          changes-file: ""
